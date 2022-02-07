@@ -17,20 +17,6 @@ class _ChatScreenState extends State<ChatScreen> {
   String message = "";
   TextEditingController messageInputController = TextEditingController();
 
-  void getMessages() async {
-    final messages =
-        await FirebaseFirestore.instance.collection('messages').get();
-    for (final message in messages.docs) {
-      print(message.data());
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    getMessages();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,12 +96,18 @@ class MessageStream extends StatelessWidget {
 
           return Expanded(
             child: ListView(
-              children: snapshot.data!.docs.map((DocumentSnapshot document) {
+              reverse: true,
+              children:
+                  snapshot.data!.docs.reversed.map((DocumentSnapshot document) {
                 Map<String, dynamic> data =
                     document.data()! as Map<String, dynamic>;
 
                 return MessageBubble(
-                    text: data['text'], sender: data['sender']);
+                    text: data['text'],
+                    sender: data['sender'],
+                    isSenderCurrentUser:
+                        FirebaseAuth.instance.currentUser?.email ==
+                            data['sender']);
               }).toList(),
             ),
           );
@@ -126,7 +118,12 @@ class MessageStream extends StatelessWidget {
 class MessageBubble extends StatelessWidget {
   final String text;
   final String sender;
-  const MessageBubble({Key? key, required this.text, required this.sender})
+  final bool isSenderCurrentUser;
+  const MessageBubble(
+      {Key? key,
+      required this.text,
+      required this.sender,
+      this.isSenderCurrentUser = false})
       : super(key: key);
 
   @override
@@ -134,28 +131,34 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: isSenderCurrentUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Text(
             sender,
             style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
           Material(
-            color: Colors.lightBlueAccent,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(30),
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-            elevation: 5,
+            color: isSenderCurrentUser ? Colors.lightBlueAccent : Colors.white,
+            borderRadius: isSenderCurrentUser
+                ? const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  )
+                : const BorderRadius.only(
+                    topRight: Radius.circular(30),
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
               child: Text(
                 text,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.white,
-                ),
+                style: TextStyle(
+                    fontSize: 15,
+                    color: isSenderCurrentUser ? Colors.white : Colors.black54),
               ),
             ),
           ),
